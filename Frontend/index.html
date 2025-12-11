@@ -83,11 +83,10 @@
     </div>
 
     <script>
-        // REPLACE WITH YOUR API GATEWAY URL
+
         const API_ENDPOINT = 'https://vl2v6pexf4.execute-api.us-east-2.amazonaws.com/dev/get-url';
 
-        // REPLACE WITH YOUR DESTINATION BUCKET URL
-        // Format: https://BUCKET-NAME.s3.REGION.amazonaws.com
+
         const DEST_BUCKET_URL = 'https://my-image-pipeline-source-o1.s3.us-east-2.amazonaws.com';
 
         async function uploadImage() {
@@ -102,11 +101,11 @@
             status.textContent = 'Requesting secure upload link...';
 
             try {
-                // 1. Get Presigned URL
+
                 const response = await fetch(`${API_ENDPOINT}?filename=${file.name}`);
                 const data = await response.json();
 
-                // 2. Upload directly to S3
+
                 status.textContent = 'Uploading to S3...';
                 await fetch(data.uploadURL, {
                     method: 'PUT',
@@ -116,7 +115,6 @@
 
                 status.textContent = 'Processing... (Waiting 5s for Lambda)';
 
-                // 3. Predict URLs (since we know the logic) and display
                 setTimeout(() => {
                     const baseName = file.name.split('.')[0];
                     document.getElementById('link-1080').href = `${DEST_BUCKET_URL}/1080p/${baseName}.webp`;
@@ -126,7 +124,7 @@
                     document.getElementById('results').style.display = 'block';
                     status.textContent = 'Done!';
                     btn.disabled = false;
-                }, 5000); // Wait for Lambda to finish
+                }, 5000);
 
             } catch (err) {
                 console.error(err);
