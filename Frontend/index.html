@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serverless Image Optimizer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background: grey;
+        }
+
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #ccc;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .img-card {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AWS Image Optimizer</h1>
+    <div class="upload-box">
+        <input type="file" id="fileInput" accept="image/jpeg, image/png">
+        <button onclick="uploadImage()" id="uploadBtn">Upload & Optimize</button>
+        <p id="status"></p>
+    </div>
+
+    <div id="results" style="display:none;">
+        <h3>Optimization Results:</h3>
+        <div class="gallery">
+            <div class="img-card">
+                <h4>Original (Input)</h4>
+                <p>Uploaded to Source Bucket</p>
+            </div>
+            <div class="img-card">
+                <h4>1080p WebP</h4>
+                <a id="link-1080" target="_blank">View Image</a>
+            </div>
+            <div class="img-card">
+                <h4>720p WebP</h4>
+                <a id="link-720" target="_blank">View Image</a>
+            </div>
+            <div class="img-card">
+                <h4>Mobile WebP</h4>
+                <a id="link-mobile" target="_blank">View Image</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // REPLACE WITH YOUR API GATEWAY URL
+        const API_ENDPOINT = 'https://vl2v6pexf4.execute-api.us-east-2.amazonaws.com/dev/get-url';
+
+        // REPLACE WITH YOUR DESTINATION BUCKET URL
+        // Format: https://BUCKET-NAME.s3.REGION.amazonaws.com
+        const DEST_BUCKET_URL = 'https://my-image-pipeline-source-o1.s3.us-east-2.amazonaws.com';
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const status = document.getElementById('status');
+            const btn = document.getElementById('uploadBtn');
+
+            if (!file) return alert('Please select a file');
+
+            btn.disabled = true;
+            status.textContent = 'Requesting secure upload link...';
+
+            try {
+                // 1. Get Presigned URL
+                const response = await fetch(`${API_ENDPOINT}?filename=${file.name}`);
+                const data = await response.json();
+
+                // 2. Upload directly to S3
+                status.textContent = 'Uploading to S3...';
+                await fetch(data.uploadURL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': file.type },
+                    body: file
+                });
+
+                status.textContent = 'Processing... (Waiting 5s for Lambda)';
+
+                // 3. Predict URLs (since we know the logic) and display
+                setTimeout(() => {
+                    const baseName = file.name.split('.')[0];
+                    document.getElementById('link-1080').href = `${DEST_BUCKET_URL}/1080p/${baseName}.webp`;
+                    document.getElementById('link-720').href = `${DEST_BUCKET_URL}/720p/${baseName}.webp`;
+                    document.getElementById('link-mobile').href = `${DEST_BUCKET_URL}/mobile/${baseName}.webp`;
+
+                    document.getElementById('results').style.display = 'block';
+                    status.textContent = 'Done!';
+                    btn.disabled = false;
+                }, 5000); // Wait for Lambda to finish
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'Error during upload.';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
